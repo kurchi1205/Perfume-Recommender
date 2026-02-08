@@ -11,7 +11,8 @@ class PerfumeWorkingState(TypedDict):
     current_moods: Optional[List[str]]
 
     batch: List[dict]       
-    batch_size: int         
+    batch_size: int   
+    total_perfumes: int      
 
 
 class PerfumeMoodOutput(TypedDict):

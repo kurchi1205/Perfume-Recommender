@@ -19,10 +19,6 @@ def user_role_prompt(request: ModelRequest) -> str:
         - main accords
         - gender
 
-        Do NOT invent notes.
-        Do NOT mention brands.
-        Do NOT repeat the description.
-
         Return ONLY and only the valid JSON in the format, no additional text:
 
         {{
