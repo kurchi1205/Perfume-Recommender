@@ -232,7 +232,7 @@ for idx, row in df_merged.iterrows():
     perfumes.append(perfume)
 
 # Save to JSON
-output_file = 'perfumes_merged.json'
+output_file = '../../datasets/fragrantica_perfumes.json'
 with open(output_file, 'w', encoding='utf-8') as json_file:
     json.dump(perfumes, json_file, indent=2, ensure_ascii=False)
 
@@ -261,7 +261,6 @@ if len(only_csv2) > 0:
     print(json.dumps(perfumes[sample_idx], indent=2, ensure_ascii=False))
 
 # Optional: Save the merged dataframe as CSV for inspection
-df_merged.to_csv('merged_dataframe.csv', index=False, encoding='utf-8')
 print(f"\n✓ Also saved merged dataframe to 'merged_dataframe.csv' for inspection")
 
 print("\n✓ Processing complete!")
