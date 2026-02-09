@@ -12,7 +12,9 @@ class PerfumeWorkingState(TypedDict):
 
     batch: List[dict]       
     batch_size: int   
-    total_perfumes: int      
+    total_perfumes: int 
+
+    existing_urls: set     
 
 
 class PerfumeMoodOutput(TypedDict):

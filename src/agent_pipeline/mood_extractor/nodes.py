@@ -18,6 +18,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def load_existing_perfume_urls(output_path: Path) -> set[str]:
+    """
+    Reads existing JSONL file and returns a set of perfume URLs already processed.
+    """
+    existing = set()
+
+    if not output_path.exists():
+        return existing
+
+    with open(output_path, "r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+                url = record.get("url")
+                if url:
+                    existing.add(url)
+            except json.JSONDecodeError:
+                continue
+
+    return existing
+
 
 def form_input_content(data_item):
     text_content = ""
@@ -38,6 +61,7 @@ def form_input_content(data_item):
 
 def initialize(state: PerfumeInputState) -> PerfumeWorkingState:
     total = len(state["perfumes"])
+    existing_urls = load_existing_perfume_urls(OUTPUT_PATH)
     logger.info(f"🚀 Starting mood extraction for {total} perfumes")
 
     return {
@@ -48,28 +72,45 @@ def initialize(state: PerfumeInputState) -> PerfumeWorkingState:
         "batch": [],
         "batch_size": 10,
         "total_perfumes": total,   # helpful for progress
+        "existing_urls": existing_urls
     }
 
 
 
 def next_perfume(state: PerfumeWorkingState) -> PerfumeWorkingState:
-    idx = state["current_index"]
     total = state["total_perfumes"]
+    existing_urls = state["existing_urls"]
 
-    if idx >= total:
-        logger.info("✅ All perfumes processed")
-        state["current_perfume"] = None
+    while state["current_index"] < total:
+        idx = state["current_index"]
+        perfume = state["perfumes"][idx]
+        state["current_index"] += 1
+
+        url = perfume.get("url")
+
+        if url and url in existing_urls:
+            logger.info(
+                f"Skipping already processed perfume "
+                f"{idx}/{total}: {perfume.get('name', 'Unknown')}"
+            )
+            continue
+
+        state["current_perfume"] = perfume
+
+        # Progress log
+        if idx % 10 == 0 or idx == total - 1:
+            logger.info(
+                f"🔄 Processing perfume {idx + 1}/{total}: "
+                f"{perfume.get('name', 'Unknown')}"
+            )
+
         return state
 
-    state["current_perfume"] = state["perfumes"][idx]
-    state["current_index"] += 1
-
-    # Log every 10 items (not noisy)
-    if idx % 10 == 0 or idx == total - 1:
-        name = state["current_perfume"].get("name", "Unknown")
-        logger.info(f"🔄 Processing perfume {idx + 1}/{total}: {name}")
-
+    # If we reach here, we're done
+    logger.info("All perfumes processed")
+    state["current_perfume"] = None
     return state
+
 
 
 def extract_moods(state: PerfumeWorkingState) -> PerfumeWorkingState:
@@ -115,17 +156,23 @@ def assemble_output(state: PerfumeWorkingState):
         "moods": moods,
     })
 
+    # Mark as processed immediately
+    url = perfume.get("url")
+    if url:
+        state["existing_urls"].add(url)
+
     if len(state["batch"]) >= state["batch_size"]:
         with open(OUTPUT_PATH, "a", encoding="utf-8") as f:
             for item in state["batch"]:
                 f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
         logger.info(
-            f"Flushed batch of {state['batch_size']} perfumes "
+            f"💾 Flushed batch of {state['batch_size']} perfumes "
             f"(up to index {state['current_index']})"
         )
 
         state["batch"].clear()
+
     return state
 
 

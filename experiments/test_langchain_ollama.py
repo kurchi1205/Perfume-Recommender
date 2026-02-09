@@ -32,22 +32,18 @@ def test_ollama_2():
         - main accords
         - gender
 
-        Do NOT invent notes.
-        Do NOT mention brands.
-        Do NOT repeat the description.
-
         Return ONLY valid JSON in the format:
 
         {{
-        "moods": []
+        "moods": list of 5 abstract mood strings.
         }}
-
+        where "moods" is a list of 5 abstract mood strings. Dont include main accords.
         Perfume data:
         {perfume_json}
     """
     prompt = ChatPromptTemplate.from_template(template)
 
-    model = OllamaLLM(model="llama3")
+    model = OllamaLLM(model="smollm2:latest", max_tokens=100, temperature=0.4)
 
     chain = prompt | model
 

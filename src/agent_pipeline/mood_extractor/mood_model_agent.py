@@ -21,10 +21,10 @@ def user_role_prompt(request: ModelRequest) -> str:
 
         Return ONLY and only the valid JSON in the format, no additional text:
 
-        {{
-        "moods": []
-        }}
-
+        {
+        "moods": list of 5 abstract mood strings.
+        }
+        where "moods" is a list of 5 abstract mood strings. Dont include main accords.
         Perfume data:
     """
     perfume_content = request.runtime.context.get("perfume_content", "{}")
@@ -33,7 +33,7 @@ def user_role_prompt(request: ModelRequest) -> str:
 
 
 def create_mood_model_agent():
-    model = OllamaLLM(model="llama3", max_tokens=100, temperature=0.4)
+    model = OllamaLLM(model="smollm2:latest", max_tokens=100, temperature=0.4)
     agent = create_agent(model, middleware=[user_role_prompt])
     return agent
 
