@@ -1,5 +1,7 @@
 import json
-from mood_model_agent import (
+import sys
+sys.path.insert(0, "../")
+from ..mood_model_agent import (
     create_mood_extraction_chain,
     extract_moods as extract_moods_from_chain,
 )
