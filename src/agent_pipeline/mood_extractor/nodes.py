@@ -1,14 +1,13 @@
 import json
 from mood_model_agent import (
-    create_mood_model_agent,
-    run_mood_model_agent,
-    extract_moods_from_agent_result,
+    create_mood_extraction_chain,
+    extract_moods as extract_moods_from_chain,
 )
 from states import PerfumeInputState, PerfumeWorkingState
 from pathlib import Path
 import logging
 
-MOOD_AGENT = create_mood_model_agent()
+MOOD_CHAIN = create_mood_extraction_chain()
 OUTPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
 
 
@@ -122,12 +121,11 @@ def extract_moods(state: PerfumeWorkingState) -> PerfumeWorkingState:
 
     try:
         content = form_input_content(perfume)
-        agent_result = run_mood_model_agent(MOOD_AGENT, content)
-        moods = extract_moods_from_agent_result(agent_result)
+        moods = extract_moods_from_chain(MOOD_CHAIN, content)
 
         if not moods:
             logger.warning(
-                f"⚠️ No moods extracted for: {perfume.get('name', 'Unknown')}"
+                f"No moods extracted for: {perfume.get('name', 'Unknown')}"
             )
 
         state["current_moods"] = moods
