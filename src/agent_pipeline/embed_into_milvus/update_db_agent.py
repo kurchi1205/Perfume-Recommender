@@ -16,6 +16,7 @@ from milvus_setup.create_db import create_connection, create_db
 from pymilvus import db
 from pymilvus import MilvusClient, DataType
 from langchain_ollama import ChatOllama
+from utils import build_record
 
 
 
@@ -70,16 +71,16 @@ def create_schema_for_collection():
         enable_dynamic_field=True,
     )
     schema.add_field(field_name="id", datatype=DataType.VARCHAR, is_primary=True, max_length=10)
-    schema.add_field(field_name="name", datatype=DataType.FLOAT_VECTOR, dim=1536)
+    schema.add_field(field_name="name", datatype=DataType.VARCHAR, dim=1536)
     schema.add_field(field_name="description", datatype=DataType.VARCHAR, max_length=65535)
     schema.add_field(field_name="url", datatype=DataType.VARCHAR, max_length=65535)
     schema.add_field(field_name="brand", datatype=DataType.VARCHAR, max_length=100)
     schema.add_field(field_name="gender", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="top_notes", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="middle_notes", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="base_notes", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="main_accords", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="moods", datatype=DataType.VARCHAR, max_length=512)
+    schema.add_field(field_name="top_notes", datatype=DataType.VARCHAR, max_length=100, is_array=True)
+    schema.add_field(field_name="middle_notes", datatype=DataType.VARCHAR, max_length=100, is_array=True)
+    schema.add_field(field_name="base_notes", datatype=DataType.VARCHAR, max_length=100, is_array=True)
+    schema.add_field(field_name="main_accords", datatype=DataType.VARCHAR, max_length=100, is_array=True)
+    schema.add_field(field_name="moods_embedding", datatype=DataType.FLOAT_VECTOR, max_length=512)
     return schema
 
 
@@ -94,11 +95,31 @@ def create_collection(collection_name):
     )
     
 
-
 @tool
-def embed_perfumes():
-    "Embed perfumes into Milvus"
+def insert_into_collection(collection_name, path: str):
     global client
+    batch = []
+    total = 0
+    BATCH_SIZE = 100
+    with open(path, "r", encoding="utf-8") as f:
+        for line_num, line in enumerate(f, start=1):
+            if not line.strip():
+                continue
+
+            item = json.loads(line)
+            record = build_record(item)
+
+            batch.append(record)
+
+            if len(batch) >= BATCH_SIZE:
+                client.insert(collection_name=collection_name, data=batch)
+                total += len(batch)
+                batch.clear()
+
+    # final flush
+    if batch:
+        client.insert(collection_name=collection_name, data=batch)
+        total += len(batch)
 
 
 
