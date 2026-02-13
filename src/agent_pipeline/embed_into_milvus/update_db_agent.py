@@ -7,15 +7,17 @@
 import json
 import logging
 from pathlib import Path
-from pydoc import cli
 import sys
+
 sys.path.insert(0, "../../")
+
 from langchain_core.tools import tool
 from langchain.agents import create_agent
 from milvus_setup.create_db import create_connection, create_db
 from pymilvus import db
 from pymilvus import MilvusClient, DataType
 from langchain_ollama import ChatOllama
+from langgraph.prebuilt import create_react_agent
 from utils import build_record
 
 
@@ -33,7 +35,7 @@ DB_NAME = "perfume_db"
 COLLECTIONS_NAME = "perfume_collection"
 
 @tool
-def check_if_db_exists():
+def check_if_db_exists() -> bool:
     "Check if the db exists"
     logger.info("Checking if database '%s' exists...", DB_NAME)
     create_connection()
@@ -46,11 +48,12 @@ def check_if_db_exists():
     return True
 
 @tool
-def create_milvus_db():
+def create_milvus_db(db_name) -> str:
     "Create a new Milvus database if it doesn't exist"
-    logger.info("Creating database '%s'...", DB_NAME)
+    logger.info("Creating database '%s'...", db_name)
     create_db()
-    logger.info("Database '%s' created.", DB_NAME)
+    logger.info("Database '%s' created.", db_name)
+    return "Database created"
 
 def init_milvus_client(db_name):
     "Initialize the Milvus client"
@@ -64,7 +67,7 @@ def init_milvus_client(db_name):
     return client
 
 @tool
-def check_if_collection_exists(db_name, collection_name):
+def check_if_collection_exists(db_name, collection_name) -> bool:
     "Check if the collection exists"
     logger.info("Checking if collection '%s' exists in db '%s'...", collection_name, db_name)
     global client
@@ -81,22 +84,22 @@ def create_schema_for_collection():
         auto_id=False,
         enable_dynamic_field=True,
     )
-    schema.add_field(field_name="id", datatype=DataType.VARCHAR, is_primary=True, max_length=10)
-    schema.add_field(field_name="name", datatype=DataType.VARCHAR, dim=1536)
+    schema.add_field(field_name="id", datatype=DataType.VARCHAR, is_primary=True, max_length=36)
+    schema.add_field(field_name="name", datatype=DataType.VARCHAR, max_length=500)
     schema.add_field(field_name="description", datatype=DataType.VARCHAR, max_length=65535)
     schema.add_field(field_name="url", datatype=DataType.VARCHAR, max_length=65535)
     schema.add_field(field_name="brand", datatype=DataType.VARCHAR, max_length=100)
     schema.add_field(field_name="gender", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="top_notes", datatype=DataType.VARCHAR, max_length=100, is_array=True)
-    schema.add_field(field_name="middle_notes", datatype=DataType.VARCHAR, max_length=100, is_array=True)
-    schema.add_field(field_name="base_notes", datatype=DataType.VARCHAR, max_length=100, is_array=True)
-    schema.add_field(field_name="main_accords", datatype=DataType.VARCHAR, max_length=100, is_array=True)
-    schema.add_field(field_name="moods_embedding", datatype=DataType.FLOAT_VECTOR, max_length=512)
+    schema.add_field(field_name="top_notes", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="middle_notes", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="base_notes", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="main_accords", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="moods_embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)
     return schema
 
 
 @tool
-def create_collection(collection_name):
+def create_collection(collection_name) -> str:
     "Create a new Milvus collection"
     logger.info("Creating collection '%s'...", collection_name)
     global client
@@ -106,10 +109,10 @@ def create_collection(collection_name):
         schema=schema,
     )
     logger.info("Collection '%s' created.", collection_name)
-    
+    return "Collection created"
 
 @tool
-def insert_into_collection(collection_name, path: str):
+def insert_into_collection(collection_name, path: str) -> str:
     "Insert perfume data into a Milvus collection"
     logger.info("Starting insertion into collection '%s' from '%s'...", collection_name, path)
     global client
@@ -138,23 +141,24 @@ def insert_into_collection(collection_name, path: str):
         total += len(batch)
 
     logger.info("Insertion complete. Total records inserted: %d", total)
+    return "Insertion complete"
 
 
 
 SYSTEM_PROMPT = (
-        "You are a software engineer. Your job is to "
-        "1. Check if the perfume db exists. "
-        "2. If the tool returns false, create the db. "
-        "3. If it does exist, check if the perfume collection exists."
-        "4. If it doesn't exist, create it. "
-        "5. Read the input jsonl file for each record do the following: "
-        "6. Form Embedding for the 5 sensory moods. "
-        "7. Insert the perfume data into the perfume collection."
+        "You are a software engineer. Your job is to \n"
+        "1. Check if the perfume db exists.\n"
+        "2. If the check_if_db_exists tool returns false, create the db using create_milvus_db.\n "
+        "3. If it does exist, check if the perfume collection exists using check_if_collection_exists.\n"
+        "4. If it doesn't exist, create it using create_collection. \n"
+        "5. Read the input jsonl file for each record do the following: \n"
+        "7. Insert the perfume data record into the perfume collection.\n"
+         "Use the tools provided.\n"
     )
 
 
 def build_agent():
-    """Build the ReAct agent with llama3.1:8b and the 3 tools."""
+    """Build the ReAct agent with llama3.1:8b and the 5 tools."""
     model = ChatOllama(model="llama3.1:8b", temperature=0)
     INPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
     agent = create_agent(
