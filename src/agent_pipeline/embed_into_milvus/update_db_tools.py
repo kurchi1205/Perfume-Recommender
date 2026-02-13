@@ -98,10 +98,11 @@ def create_schema_for_collection():
 
 
 @tool
-def create_collection(collection_name: str) -> str:
+def create_collection(db_name: str, collection_name: str) -> str:
     "Create a new Milvus collection. Only call this if check_if_collection_exists returned False."
     logger.info("Creating collection '%s'...", collection_name)
     global client
+    client = init_milvus_client(db_name)
     schema = create_schema_for_collection()
     client.create_collection(
         collection_name=collection_name,
@@ -157,37 +158,37 @@ def insert_into_collection(collection_name: str, input_path: str) -> str:
 
 
 
-SYSTEM_PROMPT = (
-        "You are a database engineer. You MUST call all the tools to complete tasks — "
-        "Must follow the instructions.\n"
-        "Start by calling check_if_db_exists with db_name and collection_name. If it returns False, call create_milvus_db.\n"
-        "Then proceed with check_if_collection_exists, if it returns False, call create_collection.\n"
-        # "Then call insert_into_collection with Collection_name and INPUT_PATH as parameter to insert data.\n"
-    )
+# SYSTEM_PROMPT = (
+#         "You are a database engineer. You MUST call all the tools to complete tasks — "
+#         "Must follow the instructions.\n"
+#         "Start by calling check_if_db_exists with db_name and collection_name. If it returns False, call create_milvus_db.\n"
+#         "Then proceed with check_if_collection_exists, if it returns False, call create_collection.\n"
+#         # "Then call insert_into_collection with Collection_name and INPUT_PATH as parameter to insert data.\n"
+#     )
 
 
-def build_agent():
-    """Build the ReAct agent with llama3.1:8b and the 5 tools."""
-    model = ChatOllama(model="llama3.1:8b", temperature=0)
-    INPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
-    agent = create_agent(
-        model=model,
-        tools=[check_if_db_exists, create_milvus_db, check_if_collection_exists, create_collection, insert_into_collection],
-        system_prompt=SYSTEM_PROMPT + f"\n\n INPUT_PATH: {INPUT_PATH}, Database_name: {DB_NAME}, Collection_name: {COLLECTIONS_NAME}",
-    )
-    return agent
+# def build_agent():
+#     """Build the ReAct agent with llama3.1:8b and the 5 tools."""
+#     model = ChatOllama(model="llama3.1:8b", temperature=0)
+#     INPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
+#     agent = create_agent(
+#         model=model,
+#         tools=[check_if_db_exists, create_milvus_db, check_if_collection_exists, create_collection, insert_into_collection],
+#         system_prompt=SYSTEM_PROMPT + f"\n\n INPUT_PATH: {INPUT_PATH}, Database_name: {DB_NAME}, Collection_name: {COLLECTIONS_NAME}",
+#     )
+#     return agent
 
 
-if __name__=="__main__":
-    agent = build_agent()
-    INPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
-    result = agent.invoke(
-        {"messages": [{"role": "user", "content": (
-            f"Set up the database '{DB_NAME}' and collection '{COLLECTIONS_NAME}', "
-            f"then insert data from {INPUT_PATH} into it."
-        )}]}
-    )
+# if __name__=="__main__":
+#     agent = build_agent()
+#     INPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
+#     result = agent.invoke(
+#         {"messages": [{"role": "user", "content": (
+#             f"Set up the database '{DB_NAME}' and collection '{COLLECTIONS_NAME}', "
+#             f"then insert data from {INPUT_PATH} into it."
+#         )}]}
+#     )
 
-    # Print final agent message
-    final_message = result["messages"][-1]
-    print(f"\nAgent: {final_message.content}")
+#     # Print final agent message
+#     final_message = result["messages"][-1]
+#     print(f"\nAgent: {final_message.content}")
