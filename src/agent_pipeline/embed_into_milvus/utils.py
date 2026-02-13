@@ -29,16 +29,26 @@ def embed_text_bge(
     Embeds a list of texts using BGE.
     Returns List[List[float]] suitable for Milvus FLOAT_VECTOR.
     """
-    moods = ", ".join(mood_list)
+    processed_moods = []
+    for item in mood_list:
+        if isinstance(item, dict):
+            # Extract all values from the dictionary
+            processed_moods.extend(item.values())
+        else:
+            # Keep string items as-is
+            processed_moods.append(item)
+    
+    # Join all moods into a single string
+    moods = ", ".join(str(mood) for mood in processed_moods)
     
     # LangChain BGE supports embed_documents for batching
     embeddings = embedder.embed_query(moods)
     return embeddings
 
 
-def build_record(item: dict) -> dict:
+def build_record(embedder, item: dict) -> dict:
     notes = item.get("notes", {})
-    embedder = init_bge_embedder()
+    
     return {
         "id": str(uuid.uuid4()),
 

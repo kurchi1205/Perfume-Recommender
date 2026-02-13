@@ -17,8 +17,7 @@ from milvus_setup.create_db import create_connection, create_db
 from pymilvus import db
 from pymilvus import MilvusClient, DataType
 from langchain_ollama import ChatOllama
-from langgraph.prebuilt import create_react_agent
-from utils import build_record
+from utils import build_record, init_bge_embedder
 
 
 
@@ -36,7 +35,7 @@ COLLECTIONS_NAME = "perfume_collection"
 
 @tool
 def check_if_db_exists() -> bool:
-    "Check if the db exists"
+    "Check if the db exists. Returns True if it exists, False otherwise."
     logger.info("Checking if database '%s' exists...", DB_NAME)
     create_connection()
     existing_dbs = db.list_database()
@@ -48,8 +47,8 @@ def check_if_db_exists() -> bool:
     return True
 
 @tool
-def create_milvus_db(db_name) -> str:
-    "Create a new Milvus database if it doesn't exist"
+def create_milvus_db(db_name: str) -> str:
+    "Create a new Milvus database. Only call this if check_if_db_exists returned False."
     logger.info("Creating database '%s'...", db_name)
     create_db()
     logger.info("Database '%s' created.", db_name)
@@ -67,8 +66,8 @@ def init_milvus_client(db_name):
     return client
 
 @tool
-def check_if_collection_exists(db_name, collection_name) -> bool:
-    "Check if the collection exists"
+def check_if_collection_exists(db_name: str, collection_name: str) -> bool:
+    "Check if a collection exists in the database. Returns True if it exists, False otherwise."
     logger.info("Checking if collection '%s' exists in db '%s'...", collection_name, db_name)
     global client
     client = init_milvus_client(db_name)
@@ -90,17 +89,17 @@ def create_schema_for_collection():
     schema.add_field(field_name="url", datatype=DataType.VARCHAR, max_length=65535)
     schema.add_field(field_name="brand", datatype=DataType.VARCHAR, max_length=100)
     schema.add_field(field_name="gender", datatype=DataType.VARCHAR, max_length=100)
-    schema.add_field(field_name="top_notes", datatype=DataType.VARCHAR, max_length=2000)
-    schema.add_field(field_name="middle_notes", datatype=DataType.VARCHAR, max_length=2000)
-    schema.add_field(field_name="base_notes", datatype=DataType.VARCHAR, max_length=2000)
-    schema.add_field(field_name="main_accords", datatype=DataType.VARCHAR, max_length=2000)
+    schema.add_field(field_name="top_notes", datatype=DataType.VARCHAR, max_length=2000, is_array=True)
+    schema.add_field(field_name="middle_notes", datatype=DataType.VARCHAR, max_length=2000, is_array=True)
+    schema.add_field(field_name="base_notes", datatype=DataType.VARCHAR, max_length=2000, is_array=True)
+    schema.add_field(field_name="main_accords", datatype=DataType.VARCHAR, max_length=2000, is_array=True)
     schema.add_field(field_name="moods_embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)
     return schema
 
 
 @tool
-def create_collection(collection_name) -> str:
-    "Create a new Milvus collection"
+def create_collection(collection_name: str) -> str:
+    "Create a new Milvus collection. Only call this if check_if_collection_exists returned False."
     logger.info("Creating collection '%s'...", collection_name)
     global client
     schema = create_schema_for_collection()
@@ -108,24 +107,37 @@ def create_collection(collection_name) -> str:
         collection_name=collection_name,
         schema=schema,
     )
+    index_params = MilvusClient.prepare_index_params()
+    index_params.add_index(
+        field_name="moods_embedding",
+        metric_type="COSINE",
+        index_type="IVF_FLAT",
+        index_name="vector_index",
+    )
+    client.create_index(
+        collection_name=collection_name,
+        index_params=index_params,
+    )
     logger.info("Collection '%s' created.", collection_name)
     return "Collection created"
 
+
+embedder = init_bge_embedder()
 @tool
-def insert_into_collection(collection_name, path: str) -> str:
-    "Insert perfume data into a Milvus collection"
-    logger.info("Starting insertion into collection '%s' from '%s'...", collection_name, path)
+def insert_into_collection(collection_name: str, input_path: str) -> str:
+    "Insert perfume data from a JSONL file into a Milvus collection."
+    logger.info("Starting insertion into collection '%s' from '%s'...", collection_name, input_path)
     global client
     batch = []
     total = 0
-    BATCH_SIZE = 100
-    with open(path, "r", encoding="utf-8") as f:
+    BATCH_SIZE = 10
+    with open(input_path, "r", encoding="utf-8") as f:
         for line_num, line in enumerate(f, start=1):
             if not line.strip():
                 continue
 
             item = json.loads(line)
-            record = build_record(item)
+            record = build_record(embedder, item)
 
             batch.append(record)
 
@@ -146,14 +158,11 @@ def insert_into_collection(collection_name, path: str) -> str:
 
 
 SYSTEM_PROMPT = (
-        "You are a software engineer. Your job is to \n"
-        "1. Check if the perfume db exists.\n"
-        "2. If the check_if_db_exists tool returns false, create the db using create_milvus_db.\n "
-        "3. If it does exist, check if the perfume collection exists using check_if_collection_exists.\n"
-        "4. If it doesn't exist, create it using create_collection. \n"
-        "5. Read the input jsonl file for each record do the following: \n"
-        "7. Insert the perfume data record into the perfume collection.\n"
-         "Use the tools provided.\n"
+        "You are a database engineer. You MUST call all the tools to complete tasks — "
+        "Must follow the instructions.\n"
+        "Start by calling check_if_db_exists with db_name and collection_name. If it returns False, call create_milvus_db.\n"
+        "Then proceed with check_if_collection_exists, if it returns False, call create_collection.\n"
+        # "Then call insert_into_collection with Collection_name and INPUT_PATH as parameter to insert data.\n"
     )
 
 
@@ -164,15 +173,19 @@ def build_agent():
     agent = create_agent(
         model=model,
         tools=[check_if_db_exists, create_milvus_db, check_if_collection_exists, create_collection, insert_into_collection],
-        system_prompt=SYSTEM_PROMPT + f"\n\n Input file: {INPUT_PATH}, Database_name: {DB_NAME}, Collection_name: {COLLECTIONS_NAME}",
+        system_prompt=SYSTEM_PROMPT + f"\n\n INPUT_PATH: {INPUT_PATH}, Database_name: {DB_NAME}, Collection_name: {COLLECTIONS_NAME}",
     )
     return agent
 
 
 if __name__=="__main__":
     agent = build_agent()
+    INPUT_PATH = Path("../../../datasets/perfumes_with_moods.jsonl")
     result = agent.invoke(
-        {"messages": [{"role": "user", "content": "Insert the perfume entries in the collection."}]}
+        {"messages": [{"role": "user", "content": (
+            f"Set up the database '{DB_NAME}' and collection '{COLLECTIONS_NAME}', "
+            f"then insert data from {INPUT_PATH} into it."
+        )}]}
     )
 
     # Print final agent message
