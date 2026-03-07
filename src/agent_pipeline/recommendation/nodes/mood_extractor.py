@@ -69,7 +69,6 @@ def form_user_content(data):
 
 
 def mood_extracting_agent(input_state, state: RecommendationWorkingState):
-    print(input_state)
     data = {}
     if input_state["input_type"] == "text":
         user_input = input_state["mood_input"]
