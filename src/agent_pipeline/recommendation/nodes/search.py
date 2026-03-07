@@ -18,7 +18,38 @@ def _parse_mcp_result(raw):
     return raw
 
 
-async def _run_search(extracted_accords: list, state) -> list:
+def _rerank_by_extracted_accords(candidates: list, extracted_accords: list, top_k: int = 5) -> list:
+    """
+    Rerank Milvus candidates against the mood-extracted accords.
+
+    Two accord signals:
+      - token_score:  word-level overlap between extracted accord phrases and
+                      main_accord tokens (catches "tropical" inside "retro tropical")
+      - exact_score:  full extracted phrase matches a main_accord exactly
+                      (rare but strong signal)
+
+    Final score = 0.6 * search_score + 0.3 * token_score + 0.1 * exact_score
+    """
+    extracted_phrases = {a.lower().strip() for a in extracted_accords}
+    extracted_tokens = set()
+    for a in extracted_accords:
+        extracted_tokens.update(a.lower().split())
+
+    for c in candidates:
+        main_phrases = {a.lower().strip() for a in c["main_accords"]}
+        main_tokens = set()
+        for a in c["main_accords"]:
+            main_tokens.update(a.lower().split())
+
+        exact_score = len(extracted_phrases & main_phrases) / len(extracted_phrases) if extracted_phrases else 0
+        token_score = len(extracted_tokens & main_tokens) / len(extracted_tokens) if extracted_tokens else 0
+
+        c["rerank_score"] = 0.6 * c["search_score"] + 0.3 * token_score + 0.1 * exact_score
+
+    return sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)[:top_k]
+
+
+async def _run_search(extracted_accords: list, extracted_moods: list, state) -> list:
     client = MultiServerMCPClient({
         "perfume-search": {
             "command": sys.executable,
@@ -30,26 +61,31 @@ async def _run_search(extracted_accords: list, state) -> list:
     by_name = {t.name: t for t in tools}
 
     # Step 1: Embed extracted accords into a query vector
-    raw_vector = await by_name["embed_query"].ainvoke({"extracted_accords": extracted_accords})
+    raw_vector = await by_name["embed_query"].ainvoke({"extracted_accords": extracted_moods})
     query_vector = _parse_mcp_result(raw_vector)
     print(f"[Step 1] query_vector: {len(query_vector)}-dim")
-    print(f"[Step 1] query_vector: {query_vector}")
 
     # Step 2: Search Milvus with the query vector
     raw_candidates = await by_name["search_milvus"].ainvoke({"query_vector": query_vector, "preferred_gender": ""})
     candidates = _parse_mcp_result(raw_candidates)
     state["candidates"] = candidates
-    print(f"[Step 2] extracted accords: {extracted_accords}")
     print(f"[Step 2] candidates: {len(candidates)} results")
 
-    return candidates
+    # Step 3: Rerank by extracted accords
+    reranked = _rerank_by_extracted_accords(candidates, extracted_accords)
+    print(f"[Step 3] reranked top-{len(reranked)}:")
+    for r in reranked:
+        print(f"  {r['name']} ({r['brand']}) | search={r['search_score']:.3f} rerank={r['rerank_score']:.3f} | accords={r['main_accords']}")
+
+    return reranked
 
 
 def search_node(state):
-    candidates = asyncio.run(_run_search(
+    reranked = asyncio.run(_run_search(
+        extracted_moods=state["extracted_moods"],
         extracted_accords=state["extracted_accords"],
         state=state
     ))
 
-    state["reranked"] = candidates
+    state["reranked"] = reranked
     return state

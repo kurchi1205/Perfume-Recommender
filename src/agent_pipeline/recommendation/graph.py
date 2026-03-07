@@ -10,7 +10,9 @@ from states import (
     RecommendationInputState,
     RecommendationWorkingState,
 )
+from nodes.accord_extractor import accord_extracting_agent
 from nodes.mood_extractor import mood_extracting_agent
+from nodes.search import search_node
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,10 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 def extract_mood(merged: dict):
-    print(merged)
     input_state = {k: merged[k] for k in RecommendationInputState.__annotations__ if k in merged}
     state = {k: merged[k] for k in RecommendationWorkingState.__annotations__ if k in merged}
-    return mood_extracting_agent(input_state, state)
+    result = mood_extracting_agent(input_state, state)
+    return {"extracted_moods": result["extracted_moods"]}
+
+def extract_accord(merged: dict):
+    input_state = {k: merged[k] for k in RecommendationInputState.__annotations__ if k in merged}
+    state = {k: merged[k] for k in RecommendationWorkingState.__annotations__ if k in merged}
+    result = accord_extracting_agent(input_state, state)
+    return {"extracted_accords": result["extracted_accords"]}
 
 
 def build_graph():
@@ -34,8 +42,14 @@ def build_graph():
     )
 
     graph.add_node("extract_mood", extract_mood)
+    graph.add_node("extract_accord", extract_accord)
+    graph.add_node("search", search_node)
 
     graph.add_edge(START, "extract_mood")
-    graph.add_edge("extract_mood", END)
+    graph.add_edge(START, "extract_accord")
+    graph.add_edge("extract_mood", "search")
+    graph.add_edge("extract_accord", "search")
+
+    graph.add_edge("search", END)
 
     return graph.compile()

@@ -22,12 +22,12 @@ MAX_RETRIES = 3
 
 llm = ChatOllama(model="ministral-3:3b", temperature=0.5, num_predict=150)
 
-SYSTEM_PROMPT = """You are a perfume mood extractor. Your job is to analyze the user's mood description or image and return a list of moods.
+SYSTEM_PROMPT = """You are a perfume mood extractor. Your job is to analyze the user's mood description or image and return a list of scent accords.
 Rules:
-- Return ONLY an array of mood strings
+- Return ONLY an array of accord strings
 - Choose 3 to 7 accords that best capture the mood or feeling conveyed
 - Use lowercase accord names
-- Do not include explanations, strictly give an array of moods
+- Do not include explanations, strictly give an array of accords
 """
 
 
@@ -68,7 +68,7 @@ def form_user_content(data):
 
 
 
-def mood_extracting_agent(input_state, state: RecommendationWorkingState):
+def accord_extracting_agent(input_state, state: RecommendationWorkingState):
     data = {}
     if input_state["input_type"] == "text":
         user_input = input_state["mood_input"]
@@ -85,7 +85,7 @@ def mood_extracting_agent(input_state, state: RecommendationWorkingState):
     )
 
     response = agent.invoke({"messages": form_user_content(data)})
-    state["extracted_moods"] = json.loads(response["messages"][-1].content)
+    state["extracted_accords"] = json.loads(response["messages"][-1].content)
 
     return state
 

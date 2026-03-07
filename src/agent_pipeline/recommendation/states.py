@@ -40,6 +40,7 @@ class RecommendationWorkingState(TypedDict):
 
     # --- after mood extraction ---
     extracted_accords: List[str]   # accords pulled from mood_input
+    extracted_moods: List[str]   # accords pulled from mood_input
 
     # --- after user history load ---
     user_signal: UserPreferenceSignal
