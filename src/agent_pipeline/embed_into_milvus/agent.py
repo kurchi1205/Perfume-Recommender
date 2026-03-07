@@ -8,7 +8,11 @@ via a LangGraph StateGraph instead of a ReAct agent.
 import logging
 from pathlib import Path
 
+from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
+
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+
 from langgraph.graph import StateGraph, MessagesState, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 

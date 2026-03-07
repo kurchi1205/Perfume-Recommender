@@ -12,6 +12,7 @@ import sys
 sys.path.insert(0, "../../")
 
 from langchain_core.tools import tool
+from langsmith import traceable
 from langchain.agents import create_agent
 from milvus_setup.create_db import create_connection, create_db
 from pymilvus import db
@@ -54,6 +55,7 @@ def create_milvus_db(db_name: str) -> str:
     logger.info("Database '%s' created.", db_name)
     return "Database created"
 
+@traceable(run_type="chain", name="init_milvus_client")
 def init_milvus_client(db_name):
     "Initialize the Milvus client"
     logger.info("Initializing Milvus client for database '%s'...", db_name)
@@ -78,6 +80,7 @@ def check_if_collection_exists(db_name: str, collection_name: str) -> bool:
     return False
 
 
+@traceable(run_type="chain", name="create_schema_for_collection")
 def create_schema_for_collection():
     schema = MilvusClient.create_schema(
         auto_id=False,

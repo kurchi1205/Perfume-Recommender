@@ -2,8 +2,10 @@
 from typing import List
 import uuid
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langsmith import traceable
 
 
+@traceable(run_type="embedding", name="init_bge_embedder")
 def init_bge_embedder(device: str = "cpu"):
     model_name = "BAAI/bge-m3"
     model_kwargs = {
@@ -21,6 +23,7 @@ def init_bge_embedder(device: str = "cpu"):
     )
 
 
+@traceable(run_type="embedding", name="embed_text_bge")
 def embed_text_bge(
     embedder: HuggingFaceBgeEmbeddings,
     mood_list: List[str],
@@ -46,6 +49,7 @@ def embed_text_bge(
     return embeddings
 
 
+@traceable(run_type="chain", name="build_record")
 def build_record(embedder, item: dict) -> dict:
     notes = item.get("notes", {})
     
