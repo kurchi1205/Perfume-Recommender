@@ -1,8 +1,8 @@
 import json
 from typing import List
 
-from db import get_conn, get_or_create_user
-from models import UserPreferenceSignal
+from .db import get_conn, get_or_create_user
+from .models import UserPreferenceSignal
 
 
 def load_preferences(user_id: str) -> UserPreferenceSignal:

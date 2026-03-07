@@ -46,3 +46,6 @@ def get_or_create_user(user_id: str | None = None) -> str:
             (user_id,),
         )
     return user_id
+
+if __name__ == "__main__":
+    init_db()

@@ -1,7 +1,7 @@
 
 from typing import List
 import uuid
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langsmith import traceable
 
 
@@ -16,7 +16,7 @@ def init_bge_embedder(device: str = "cpu"):
         "normalize_embeddings": True
     }
 
-    return HuggingFaceBgeEmbeddings(
+    return HuggingFaceEmbeddings(
         model_name=model_name,
         model_kwargs=model_kwargs,
         encode_kwargs=encode_kwargs
@@ -25,7 +25,7 @@ def init_bge_embedder(device: str = "cpu"):
 
 @traceable(run_type="embedding", name="embed_text_bge")
 def embed_text_bge(
-    embedder: HuggingFaceBgeEmbeddings,
+    embedder: HuggingFaceEmbeddings,
     mood_list: List[str],
 ) -> List[float]:
     """
