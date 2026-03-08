@@ -9,10 +9,12 @@ load_dotenv(Path(__file__).resolve().parents[4] / ".env")
 from states import (
     RecommendationInputState,
     RecommendationWorkingState,
+    RecommendationOutputState
 )
 from nodes.accord_extractor import accord_extracting_agent
 from nodes.mood_extractor import mood_extracting_agent
 from nodes.search import search_node
+from nodes.result_enricher import result_enricher
 
 logging.basicConfig(
     level=logging.INFO,
@@ -33,23 +35,36 @@ def extract_accord(merged: dict):
     result = accord_extracting_agent(input_state, state)
     return {"extracted_accords": result["extracted_accords"]}
 
+# def extract_user_history(merged: dict):
+#     input_state = {k: merged[k] for k in RecommendationInputState.__annotations__ if k in merged}
+#     state = {k: merged[k] for k in RecommendationWorkingState.__annotations__ if k in merged}
+#     result = user_history(input_state, state)
+#     return {"extracted_accords": result["extracted_accords"]}
+
 
 def build_graph():
     graph = StateGraph(
         RecommendationWorkingState,
         input=RecommendationInputState,
-        output=RecommendationWorkingState,
+        output=RecommendationOutputState,
     )
 
     graph.add_node("extract_mood", extract_mood)
     graph.add_node("extract_accord", extract_accord)
+    # graph.add_node("extract_user_history", extract_user_history)
     graph.add_node("search", search_node)
+    # graph.add_node("summarizer", summarizer)
+    graph.add_node("result_enricher", result_enricher)
 
     graph.add_edge(START, "extract_mood")
     graph.add_edge(START, "extract_accord")
     graph.add_edge("extract_mood", "search")
     graph.add_edge("extract_accord", "search")
 
-    graph.add_edge("search", END)
+    # graph.add_edge("search", "summarizer")
+    graph.add_edge("search", "result_enricher")
+
+    # graph.add_edge("summarizer", END)
+    graph.add_edge("result_enricher", END)
 
     return graph.compile()

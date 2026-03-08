@@ -25,10 +25,10 @@ class RecommendedPerfume(TypedDict):
     brand: str
     description: str
     url: str
+    image_url: str           # Fragrantica social card image
     main_accords: List[str]
     gender: str
-    search_score: float
-    rerank_score: float
+    
     
 
 

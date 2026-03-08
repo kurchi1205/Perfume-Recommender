@@ -73,10 +73,6 @@ async def _run_search(extracted_accords: list, extracted_moods: list, state) -> 
 
     # Step 3: Rerank by extracted accords
     reranked = _rerank_by_extracted_accords(candidates, extracted_accords)
-    print(f"[Step 3] reranked top-{len(reranked)}:")
-    for r in reranked:
-        print(f"  {r['name']} ({r['brand']}) | search={r['search_score']:.3f} rerank={r['rerank_score']:.3f} | accords={r['main_accords']}")
-
     return reranked
 
 

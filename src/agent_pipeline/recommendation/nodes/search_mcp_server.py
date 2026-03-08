@@ -5,8 +5,10 @@ MCP server exposing perfume search tools:
 - search_milvus
 - rerank_by_past_accords
 """
+import re
 import sys
 from pathlib import Path
+
 
 from mcp.server.fastmcp import FastMCP
 from pymilvus import MilvusClient
@@ -117,6 +119,21 @@ def rerank_by_past_accords(candidates: list[dict], past_accords: list[str]) -> l
 
     reranked = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
     return reranked[:5]
+
+
+@mcp.tool()
+def extract_image_from_url(url: str) -> str:
+    """Derive the Fragrantica social card image URL from a perfume page URL.
+
+    Fragrantica image URLs follow a fixed pattern:
+      page:  https://www.fragrantica.com/perfume/Brand/Name-{id}.html
+      image: https://www.fragrantica.com/mdimg/perfume-social-cards/en-p_c_{id}.jpeg
+    """
+    match = re.search(r"-(\d+)\.html$", url)
+    if not match:
+        raise ValueError(f"Could not extract perfume ID from URL: {url}")
+    perfume_id = match.group(1)
+    return f"https://www.fragrantica.com/mdimg/perfume-social-cards/en-p_c_{perfume_id}.jpeg"
 
 
 if __name__ == "__main__":
