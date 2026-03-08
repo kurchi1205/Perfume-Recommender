@@ -1,8 +1,10 @@
-import asyncio
 import json
 import sys
+from pathlib import Path
 
 from langchain.agents import create_agent
+
+_MCP_SERVER = str(Path(__file__).resolve().parent / "search_mcp_server.py")
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_ollama import ChatOllama
@@ -25,7 +27,7 @@ async def _enrich(reranked: list) -> list:
     client = MultiServerMCPClient({
         "perfume-search": {
             "command": sys.executable,
-            "args": ["nodes/search_mcp_server.py"],
+            "args": [_MCP_SERVER],
             "transport": "stdio",
         }
     })
@@ -44,7 +46,7 @@ async def _enrich(reranked: list) -> list:
     return enriched
 
 
-def result_enricher(state):
+async def result_enricher(state):
     reranked = state.get("reranked", [])
-    enriched = asyncio.run(_enrich(reranked))
-    return {"user_id": state["user_id"], "recommendations": enriched}
+    # enriched = await _enrich(reranked)
+    return {"recommendations": reranked}

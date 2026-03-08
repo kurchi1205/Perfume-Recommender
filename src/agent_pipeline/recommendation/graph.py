@@ -35,12 +35,6 @@ def extract_accord(merged: dict):
     result = accord_extracting_agent(input_state, state)
     return {"extracted_accords": result["extracted_accords"]}
 
-# def extract_user_history(merged: dict):
-#     input_state = {k: merged[k] for k in RecommendationInputState.__annotations__ if k in merged}
-#     state = {k: merged[k] for k in RecommendationWorkingState.__annotations__ if k in merged}
-#     result = user_history(input_state, state)
-#     return {"extracted_accords": result["extracted_accords"]}
-
 
 def build_graph():
     graph = StateGraph(
@@ -51,7 +45,6 @@ def build_graph():
 
     graph.add_node("extract_mood", extract_mood)
     graph.add_node("extract_accord", extract_accord)
-    # graph.add_node("extract_user_history", extract_user_history)
     graph.add_node("search", search_node)
     # graph.add_node("summarizer", summarizer)
     graph.add_node("result_enricher", result_enricher)

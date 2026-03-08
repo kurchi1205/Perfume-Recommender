@@ -1,8 +1,4 @@
-from typing import TypedDict, List, Optional
-import sys
-
-sys.path.insert(0, "../../user_history")
-from models import UserPreferenceSignal
+from typing import TypedDict, List
 
 
 # ---------------------------------------------------------------------------
@@ -10,7 +6,6 @@ from models import UserPreferenceSignal
 # ---------------------------------------------------------------------------
 
 class RecommendationInputState(TypedDict):
-    user_id: str
     input_type: str          # "text" | "image"
     mood_input: str          # free-text mood description OR path to image file
 
@@ -28,22 +23,16 @@ class RecommendedPerfume(TypedDict):
     image_url: str           # Fragrantica social card image
     main_accords: List[str]
     gender: str
-    
-    
 
 
 class RecommendationWorkingState(TypedDict):
     # --- from input ---
-    user_id: str
     input_type: str
     mood_input: str
 
     # --- after mood extraction ---
-    extracted_accords: List[str]   # accords pulled from mood_input
-    extracted_moods: List[str]   # accords pulled from mood_input
-
-    # --- after user history load ---
-    user_signal: UserPreferenceSignal
+    extracted_accords: List[str]
+    extracted_moods: List[str]
 
     # --- after Milvus search ---
     candidates: List[dict]         # top-20 raw results from Milvus
@@ -61,5 +50,4 @@ class RecommendationWorkingState(TypedDict):
 # ---------------------------------------------------------------------------
 
 class RecommendationOutputState(TypedDict):
-    user_id: str
     recommendations: List[RecommendedPerfume]

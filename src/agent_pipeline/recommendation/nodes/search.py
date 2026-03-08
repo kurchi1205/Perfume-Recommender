@@ -1,8 +1,10 @@
-import asyncio
 import json
 import sys
+from pathlib import Path
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
+
+_MCP_SERVER = str(Path(__file__).resolve().parent / "search_mcp_server.py")
 
 
 def _parse_mcp_result(raw):
@@ -53,7 +55,7 @@ async def _run_search(extracted_accords: list, extracted_moods: list, state) -> 
     client = MultiServerMCPClient({
         "perfume-search": {
             "command": sys.executable,
-            "args": ["nodes/search_mcp_server.py"],
+            "args": [_MCP_SERVER],
             "transport": "stdio",
         }
     })
@@ -76,12 +78,12 @@ async def _run_search(extracted_accords: list, extracted_moods: list, state) -> 
     return reranked
 
 
-def search_node(state):
-    reranked = asyncio.run(_run_search(
+async def search_node(state):
+    reranked = await _run_search(
         extracted_moods=state["extracted_moods"],
         extracted_accords=state["extracted_accords"],
         state=state
-    ))
+    )
 
     state["reranked"] = reranked
     return state

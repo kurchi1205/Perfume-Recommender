@@ -13,7 +13,6 @@ from PIL import Image
 from io import BytesIO
 import json
 
-sys.path.insert(0, "../../../user_history")
 from states import RecommendationWorkingState
 
 logger = logging.getLogger(__name__)
@@ -39,8 +38,10 @@ def convert_to_base64(pil_image_path):
     :return: Re-sized Base64 string
     """
     pil_image = Image.open(pil_image_path)
+    if pil_image.mode in ("RGBA", "P"):
+        pil_image = pil_image.convert("RGB")
     buffered = BytesIO()
-    pil_image.save(buffered, format="JPEG")  # You can change the format if needed
+    pil_image.save(buffered, format="JPEG")
     img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
     return img_str
 

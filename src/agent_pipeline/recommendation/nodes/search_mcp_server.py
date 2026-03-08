@@ -13,10 +13,12 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 from pymilvus import MilvusClient
 
-sys.path.insert(0, "../")    # src/agent_pipeline/ — so embed_into_milvus is importable as a package
-sys.path.insert(0, "../../") # src/ — so user_history is importable as a package
+_nodes_dir = Path(__file__).resolve().parent          # nodes/
+_agent_pipeline = _nodes_dir.parent.parent            # src/agent_pipeline/
+_src = _agent_pipeline.parent                         # src/
+sys.path.insert(0, str(_agent_pipeline))
+sys.path.insert(0, str(_src))
 
-from user_history.user_profile import load_preferences
 from embed_into_milvus.utils import init_bge_embedder, embed_text_bge
 
 mcp = FastMCP("perfume-search")
@@ -33,21 +35,6 @@ GENDER_MAP = {
 }
 
 embedder = init_bge_embedder()
-
-
-@mcp.tool()
-def load_user_history(user_id: str) -> dict:
-    """Load user preference history from SQLite by user_id."""
-    pref = load_preferences(user_id)
-    if pref is None:
-        return {}
-    return {
-        "user_id": pref.user_id,
-        "accords": pref.accords,
-        "preferred_gender": pref.preferred_gender,
-        "past_perfume_ids": pref.past_perfume_ids,
-        "summary": pref.summary,
-    }
 
 
 @mcp.tool()

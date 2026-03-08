@@ -2,3 +2,4 @@
 
 **/volumes/
 **/*.pyc
+**/**/node_modules
