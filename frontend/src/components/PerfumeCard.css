@@ -1,0 +1,97 @@
+.card {
+  background: #fff;
+  border: 1px solid #e8ddd0;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s, transform 0.2s;
+  box-shadow: 0 2px 8px rgba(59, 31, 10, 0.06);
+}
+
+.card:hover {
+  box-shadow: 0 8px 24px rgba(59, 31, 10, 0.13);
+  transform: translateY(-3px);
+}
+
+.card-img-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #f5ede2;
+}
+
+.card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.card:hover .card-img {
+  transform: scale(1.04);
+}
+
+.card-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c4a07a;
+  font-size: 2rem;
+}
+
+.card-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+}
+
+.card-brand {
+  font-size: 0.7rem;
+  color: #b8813a;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #3b1f0a;
+  line-height: 1.3;
+}
+
+.card-accords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+}
+
+.accord-tag {
+  background: #f5ede2;
+  border: 1px solid #e0cdb5;
+  color: #8a6240;
+  border-radius: 20px;
+  padding: 0.18rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.card-link {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #b8813a;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s;
+}
+
+.card-link:hover {
+  color: #7c3f1a;
+}
