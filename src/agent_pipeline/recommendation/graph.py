@@ -14,6 +14,7 @@ from states import (
 from nodes.accord_extractor import accord_extracting_agent
 from nodes.mood_extractor import mood_extracting_agent
 from nodes.search import search_node
+from nodes.evaluator import evaluate_node
 from nodes.result_enricher import result_enricher
 
 logging.basicConfig(
@@ -46,18 +47,15 @@ def build_graph():
     graph.add_node("extract_mood", extract_mood)
     graph.add_node("extract_accord", extract_accord)
     graph.add_node("search", search_node)
-    # graph.add_node("summarizer", summarizer)
+    graph.add_node("evaluator", evaluate_node)
     graph.add_node("result_enricher", result_enricher)
 
     graph.add_edge(START, "extract_mood")
     graph.add_edge(START, "extract_accord")
     graph.add_edge("extract_mood", "search")
     graph.add_edge("extract_accord", "search")
-
-    # graph.add_edge("search", "summarizer")
-    graph.add_edge("search", "result_enricher")
-
-    # graph.add_edge("summarizer", END)
+    graph.add_edge("search", "evaluator")
+    graph.add_edge("evaluator", "result_enricher")
     graph.add_edge("result_enricher", END)
 
     return graph.compile()

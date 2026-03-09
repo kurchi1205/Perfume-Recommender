@@ -38,9 +38,10 @@ embedder = init_bge_embedder()
 
 
 @mcp.tool()
-def embed_query(extracted_accords: list[str]) -> list[float]:
+def embed_query(extracted_moods: list[str], extracted_accords: list[str]) -> list[float]:
     """Embed extracted mood accords into a 1024-dim query vector using BGE-M3."""
-    return embed_text_bge(embedder, extracted_accords)
+    text_summary = f"Moods: {', '.join(extracted_moods) } Accords: {', '.join(extracted_accords)}"
+    return embed_text_bge(embedder, [text_summary])
 
 
 @mcp.tool()

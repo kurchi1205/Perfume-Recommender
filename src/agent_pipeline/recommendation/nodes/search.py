@@ -20,7 +20,7 @@ def _parse_mcp_result(raw):
     return raw
 
 
-def _rerank_by_extracted_accords(candidates: list, extracted_accords: list, top_k: int = 5) -> list:
+def _rerank_by_extracted_accords(candidates: list, extracted_accords: list, top_k: int = 20) -> list:
     """
     Rerank Milvus candidates against the mood-extracted accords.
 
@@ -63,7 +63,7 @@ async def _run_search(extracted_accords: list, extracted_moods: list, state) -> 
     by_name = {t.name: t for t in tools}
 
     # Step 1: Embed extracted accords into a query vector
-    raw_vector = await by_name["embed_query"].ainvoke({"extracted_accords": extracted_moods})
+    raw_vector = await by_name["embed_query"].ainvoke({"extracted_moods": extracted_moods, "extracted_accords": extracted_accords})
     query_vector = _parse_mcp_result(raw_vector)
     print(f"[Step 1] query_vector: {len(query_vector)}-dim")
 
