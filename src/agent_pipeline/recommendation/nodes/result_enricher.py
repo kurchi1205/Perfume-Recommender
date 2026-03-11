@@ -1,4 +1,5 @@
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -8,6 +9,10 @@ _MCP_SERVER = str(Path(__file__).resolve().parent / "search_mcp_server.py")
 from langchain_core.messages import HumanMessage, ToolMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_ollama import ChatOllama
+
+from schemas import RecommendedPerfume
+
+logger = logging.getLogger(__name__)
 
 
 llm = ChatOllama(model="mistral", temperature=0)
@@ -49,4 +54,10 @@ async def _enrich(reranked: list) -> list:
 async def result_enricher(state):
     reranked = state.get("reranked", [])
     # enriched = await _enrich(reranked)
-    return {"recommendations": reranked}
+    recommendations = []
+    for r in reranked:
+        try:
+            recommendations.append(RecommendedPerfume.model_validate(r).model_dump())
+        except Exception as e:
+            logger.warning("[result_enricher] skipping invalid result %s: %s", r.get("name", "?"), e)
+    return {"recommendations": recommendations}

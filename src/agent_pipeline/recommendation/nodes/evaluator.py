@@ -15,6 +15,8 @@ from langchain.tools import tool
 from langchain_core.messages import HumanMessage
 from langchain_ollama import ChatOllama
 
+from schemas import ScoredPerfume
+
 logger = logging.getLogger(__name__)
 
 llm = ChatOllama(model="mistral", temperature=0)
@@ -141,9 +143,19 @@ def evaluate_node(state: dict) -> dict:
     last = response["messages"][-1].content
     try:
         match = re.search(r"\[.*\]", last, re.DOTALL)
-        top5 = json.loads(match.group()) if match else candidates[:5]
+        raw_top5 = json.loads(match.group()) if match else candidates[:5]
     except Exception:
         logger.warning("[evaluator] could not parse agent output, falling back to top-5")
+        raw_top5 = candidates[:5]
+
+    top5 = []
+    for c in raw_top5:
+        try:
+            top5.append(ScoredPerfume.model_validate(c).model_dump())
+        except Exception as e:
+            logger.warning("[evaluator] skipping invalid scored perfume %s: %s", c.get("name", "?"), e)
+
+    if not top5:
         top5 = candidates[:5]
 
     logger.info("[evaluator] top-5: %s", [c["name"] for c in top5])

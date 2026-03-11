@@ -1,10 +1,15 @@
 import json
+import logging
 import sys
 from pathlib import Path
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
+from schemas import CandidatePerfume
+
 _MCP_SERVER = str(Path(__file__).resolve().parent / "search_mcp_server.py")
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_mcp_result(raw):
@@ -69,7 +74,13 @@ async def _run_search(extracted_accords: list, extracted_moods: list, state) -> 
 
     # Step 2: Search Milvus with the query vector
     raw_candidates = await by_name["search_milvus"].ainvoke({"query_vector": query_vector, "preferred_gender": ""})
-    candidates = _parse_mcp_result(raw_candidates)
+    candidates_raw = _parse_mcp_result(raw_candidates)
+    candidates = []
+    for c in candidates_raw:
+        try:
+            candidates.append(CandidatePerfume.model_validate(c).model_dump())
+        except Exception as e:
+            logger.warning("[search] skipping invalid candidate %s: %s", c.get("name", "?"), e)
     state["candidates"] = candidates
     print(f"[Step 2] candidates: {len(candidates)} results")
 

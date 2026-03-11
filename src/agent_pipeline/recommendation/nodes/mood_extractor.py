@@ -14,6 +14,7 @@ from io import BytesIO
 import json
 
 from states import RecommendationWorkingState
+from schemas import ExtractedList
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +86,18 @@ def mood_extracting_agent(input_state, state: RecommendationWorkingState):
         system_prompt=SYSTEM_PROMPT
     )
 
-    response = agent.invoke({"messages": form_user_content(data)})
-    state["extracted_moods"] = json.loads(response["messages"][-1].content)
+    messages = form_user_content(data)
+    for attempt in range(1, MAX_RETRIES + 1):
+        response = agent.invoke({"messages": messages})
+        try:
+            validated = ExtractedList(items=response["messages"][-1].content)
+            state["extracted_moods"] = validated.items
+            break
+        except Exception as e:
+            logger.warning("Mood extraction attempt %d/%d failed validation: %s", attempt, MAX_RETRIES, e)
+            if attempt == MAX_RETRIES:
+                logger.error("All mood extraction attempts failed — defaulting to []")
+                state["extracted_moods"] = []
 
     return state
 

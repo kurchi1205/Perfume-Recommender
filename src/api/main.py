@@ -4,7 +4,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -13,6 +13,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agent_pipeline/rec
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/
 
 from graph import build_graph
+from schemas import (
+    AccordsEvent,
+    DoneEvent,
+    ErrorEvent,
+    MoodsEvent,
+    ResultEvent,
+)
 
 app = FastAPI()
 
@@ -36,6 +43,10 @@ async def recommend(
     text: str = Form(default=""),
     image: UploadFile = File(default=None),
 ):
+    # Validate text input
+    if input_type == "text" and not text.strip():
+        raise HTTPException(status_code=422, detail="text must not be empty when input_type is 'text'")
+
     if input_type == "image" and image:
         suffix = Path(image.filename).suffix or ".jpeg"
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
@@ -44,7 +55,7 @@ async def recommend(
         graph_input = {"input_type": "image", "mood_input": tmp.name}
     else:
         tmp = None
-        graph_input = {"input_type": "text", "mood_input": text}
+        graph_input = {"input_type": "text", "mood_input": text[:2000]}
 
     async def generate():
         try:
@@ -53,20 +64,22 @@ async def recommend(
                 if "extract_mood" in chunk:
                     moods = chunk["extract_mood"].get("extracted_moods", [])
                     if moods:
-                        yield _sse({"type": "moods", "moods": moods})
+                        yield _sse(MoodsEvent(moods=moods).model_dump())
 
                 # extract_accord node finished
                 if "extract_accord" in chunk:
                     accords = chunk["extract_accord"].get("extracted_accords", [])
                     if accords:
-                        yield _sse({"type": "accords", "accords": accords})
+                        yield _sse(AccordsEvent(accords=accords).model_dump())
 
                 # result_enricher finished — stream final recommendations
                 if "result_enricher" in chunk:
                     recs = chunk["result_enricher"].get("recommendations", [])
-                    yield _sse({"type": "result", "recommendations": recs})
+                    yield _sse(ResultEvent(recommendations=recs).model_dump())
 
-            yield _sse({"type": "done"})
+            yield _sse(DoneEvent().model_dump())
+        except Exception as e:
+            yield _sse(ErrorEvent(message=str(e)).model_dump())
         finally:
             if tmp:
                 os.unlink(tmp.name)
