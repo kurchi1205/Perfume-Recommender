@@ -15,7 +15,7 @@ from langchain.tools import tool
 from langchain_core.messages import HumanMessage
 from langchain_ollama import ChatOllama
 
-from schemas import ScoredPerfume
+from schemas import RecommendedPerfume, ScoredPerfume
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ Return the final JSON array from rerank_candidates as your answer."""
 
 
 def evaluate_node(state: dict) -> dict:
-    candidates = state.get("reranked", [])
+    candidates = state.get("candidates", [])
     moods      = state.get("extracted_moods", [])
     accords    = state.get("extracted_accords", [])
 
@@ -148,15 +148,15 @@ def evaluate_node(state: dict) -> dict:
         logger.warning("[evaluator] could not parse agent output, falling back to top-5")
         raw_top5 = candidates[:5]
 
-    top5 = []
+    recommendations = []
     for c in raw_top5:
         try:
-            top5.append(ScoredPerfume.model_validate(c).model_dump())
+            recommendations.append(RecommendedPerfume.model_validate(c).model_dump())
         except Exception as e:
-            logger.warning("[evaluator] skipping invalid scored perfume %s: %s", c.get("name", "?"), e)
+            logger.warning("[evaluator] skipping invalid perfume %s: %s", c.get("name", "?"), e)
 
-    if not top5:
-        top5 = candidates[:5]
+    if not recommendations:
+        recommendations = candidates[:5]
 
-    logger.info("[evaluator] top-5: %s", [c["name"] for c in top5])
-    return {"reranked": top5}
+    logger.info("[evaluator] top-5: %s", [c["name"] for c in recommendations])
+    return {"recommendations": recommendations}

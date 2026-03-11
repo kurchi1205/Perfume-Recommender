@@ -37,9 +37,6 @@ class RecommendationWorkingState(TypedDict):
     # --- after Milvus search ---
     candidates: List[dict]         # top-20 raw results from Milvus
 
-    # --- after reranker ---
-    reranked: List[RecommendedPerfume]   # top-5
-
     # --- retry control ---
     retry_count: int
     user_intent_summary: str

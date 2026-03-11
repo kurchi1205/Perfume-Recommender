@@ -122,11 +122,9 @@ async def _run_search(extracted_accords: list, extracted_moods: list, state) -> 
 
 
 async def search_node(state):
-    reranked = await _run_search(
+    candidates = await _run_search(
         extracted_moods=state["extracted_moods"],
         extracted_accords=state["extracted_accords"],
         state=state
     )
-
-    state["reranked"] = reranked
-    return state
+    return {"candidates": candidates}

@@ -81,9 +81,9 @@ async def recommend(
                     if accords:
                         yield _sse(AccordsEvent(accords=accords).model_dump())
 
-                # result_enricher finished — stream final recommendations
-                if "result_enricher" in chunk:
-                    recs = chunk["result_enricher"].get("recommendations", [])
+                # evaluator finished — stream final recommendations
+                if "evaluator" in chunk:
+                    recs = chunk["evaluator"].get("recommendations", [])
                     yield _sse(ResultEvent(recommendations=recs).model_dump())
 
             yield _sse(DoneEvent().model_dump())
