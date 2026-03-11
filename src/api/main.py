@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import tempfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -13,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agent_pipeline/rec
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/
 
 from graph import build_graph
+from nodes.search import close_mcp_client
 from schemas import (
     AccordsEvent,
     DoneEvent,
@@ -21,7 +23,14 @@ from schemas import (
     ResultEvent,
 )
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield                        # startup — MCP client is lazy-initialized on first request
+    await close_mcp_client()     # shutdown — terminate the MCP subprocess cleanly
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

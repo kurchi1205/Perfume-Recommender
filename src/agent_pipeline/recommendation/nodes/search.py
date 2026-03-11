@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import sys
@@ -10,6 +11,45 @@ from schemas import CandidatePerfume
 _MCP_SERVER = str(Path(__file__).resolve().parent / "search_mcp_server.py")
 
 logger = logging.getLogger(__name__)
+
+# ── Persistent MCP client (created once, reused across requests) ──────────────
+
+_mcp_client: MultiServerMCPClient | None = None
+_mcp_tools: dict | None = None
+_mcp_lock = asyncio.Lock()
+
+
+async def _get_mcp_tools() -> dict:
+    """Return the cached tool map, initialising the client on first call."""
+    global _mcp_client, _mcp_tools
+    if _mcp_tools is not None:
+        return _mcp_tools
+    async with _mcp_lock:
+        if _mcp_tools is not None:   # re-check after acquiring lock
+            return _mcp_tools
+        logger.info("[search] starting persistent MCP client …")
+        _mcp_client = MultiServerMCPClient({
+            "perfume-search": {
+                "command": sys.executable,
+                "args": [_MCP_SERVER],
+                "transport": "stdio",
+            }
+        })
+        await _mcp_client.__aenter__()
+        tools = await _mcp_client.get_tools()
+        _mcp_tools = {t.name: t for t in tools}
+        logger.info("[search] MCP client ready — tools: %s", list(_mcp_tools))
+    return _mcp_tools
+
+
+async def close_mcp_client() -> None:
+    """Gracefully shut down the MCP subprocess (call from app lifespan teardown)."""
+    global _mcp_client, _mcp_tools
+    if _mcp_client is not None:
+        await _mcp_client.__aexit__(None, None, None)
+        _mcp_client = None
+        _mcp_tools = None
+        logger.info("[search] MCP client closed")
 
 
 def _parse_mcp_result(raw):
@@ -57,15 +97,7 @@ def _rerank_by_extracted_accords(candidates: list, extracted_accords: list, top_
 
 
 async def _run_search(extracted_accords: list, extracted_moods: list, state) -> list:
-    client = MultiServerMCPClient({
-        "perfume-search": {
-            "command": sys.executable,
-            "args": [_MCP_SERVER],
-            "transport": "stdio",
-        }
-    })
-    tools = await client.get_tools()
-    by_name = {t.name: t for t in tools}
+    by_name = await _get_mcp_tools()
 
     # Step 1: Embed extracted accords into a query vector
     raw_vector = await by_name["embed_query"].ainvoke({"extracted_moods": extracted_moods, "extracted_accords": extracted_accords})
