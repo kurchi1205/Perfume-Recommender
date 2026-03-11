@@ -1,13 +1,17 @@
+import base64
 import json
 import os
 import sys
-import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 # Make the recommendation graph importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "agent_pipeline/recommendation"))
@@ -15,13 +19,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # src/
 
 from graph import build_graph
 from nodes.search import close_mcp_client
-from schemas import (
-    AccordsEvent,
-    DoneEvent,
-    ErrorEvent,
-    MoodsEvent,
-    ResultEvent,
-)
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # src/api/
+from events import AccordsEvent, DoneEvent, ErrorEvent, MoodsEvent, ResultEvent
 
 
 @asynccontextmanager
@@ -42,6 +42,24 @@ app.add_middleware(
 graph = build_graph()
 
 
+async def _upload_to_imgbb(image_bytes: bytes) -> str:
+    """Upload image bytes to imgbb and return the public URL."""
+    api_key = os.getenv("IMGBB_API_KEY")
+    print(f"IMGBB_API_KEY: {api_key}")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="IMGBB_API_KEY not set in environment")
+    b64 = base64.b64encode(image_bytes).decode("utf-8")
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://api.imgbb.com/1/upload",
+            params={"key": api_key},
+            data={"image": b64},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()["data"]["url"]
+
+
 def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
@@ -57,13 +75,10 @@ async def recommend(
         raise HTTPException(status_code=422, detail="text must not be empty when input_type is 'text'")
 
     if input_type == "image" and image:
-        suffix = Path(image.filename).suffix or ".jpeg"
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        tmp.write(await image.read())
-        tmp.close()
-        graph_input = {"input_type": "image", "mood_input": tmp.name}
+        image_bytes = await image.read()
+        image_url = await _upload_to_imgbb(image_bytes)
+        graph_input = {"input_type": "image", "mood_input": image_url}
     else:
-        tmp = None
         graph_input = {"input_type": "text", "mood_input": text[:2000]}
 
     async def generate():
@@ -90,7 +105,6 @@ async def recommend(
         except Exception as e:
             yield _sse(ErrorEvent(message=str(e)).model_dump())
         finally:
-            if tmp:
-                os.unlink(tmp.name)
+            pass
 
     return StreamingResponse(generate(), media_type="text/event-stream")

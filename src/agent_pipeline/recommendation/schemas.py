@@ -69,17 +69,21 @@ class CandidatePerfume(BaseModel):
     search_score: float
     rerank_score: float = 0.0
 
+    @field_validator("perfume_id", "name", mode="before")
+    @classmethod
+    def coerce_to_str(cls, v):
+        return str(v).strip()
+
     @field_validator("name", "perfume_id")
     @classmethod
     def not_empty(cls, v):
-        if not v or not v.strip():
+        if not v:
             raise ValueError("Field must not be empty")
-        return v.strip()
+        return v
 
     @field_validator("main_accords", mode="before")
     @classmethod
     def parse_accords(cls, v):
-        # Search MCP returns comma-joined string in some paths
         if isinstance(v, str):
             return [a.strip() for a in v.split(",") if a.strip()]
         return [str(a).strip() for a in v if str(a).strip()]
@@ -87,8 +91,9 @@ class CandidatePerfume(BaseModel):
     @field_validator("search_score")
     @classmethod
     def valid_score(cls, v):
-        if not (0.0 <= v <= 1.0):
-            raise ValueError(f"search_score {v} out of range [0, 1]")
+        # COSINE similarity in Milvus returns [-1.0, 1.0]
+        if not (-1.0 <= v <= 1.0):
+            raise ValueError(f"search_score {v} out of range [-1, 1]")
         return v
 
 

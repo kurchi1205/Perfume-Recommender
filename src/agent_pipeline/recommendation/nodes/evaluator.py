@@ -9,17 +9,21 @@ The agent uses three tools in sequence:
 import json
 import logging
 import re
+from pathlib import Path
 
+from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage
-from langchain_ollama import ChatOllama
+from langchain_openrouter import ChatOpenRouter
 
 from schemas import RecommendedPerfume, ScoredPerfume
 
+load_dotenv(Path(__file__).resolve().parents[4] / ".env")
+
 logger = logging.getLogger(__name__)
 
-llm = ChatOllama(model="mistral", temperature=0)
+llm = ChatOpenRouter(model="google/gemma-3-4b-it:free", temperature=0)
 
 SCORER_SYSTEM = """\
 You are a perfume expert. Score each candidate 0-10 on how well its accords match \
