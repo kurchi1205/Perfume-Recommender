@@ -60,6 +60,11 @@ class AccordsEvent(BaseModel):
         return v
 
 
+class IntentEvent(BaseModel):
+    type:           Literal["intent"] = "intent"
+    intent_summary: str
+
+
 class ResultEvent(BaseModel):
     type:            Literal["result"] = "result"
     recommendations: List[dict]
@@ -72,3 +77,19 @@ class DoneEvent(BaseModel):
 class ErrorEvent(BaseModel):
     type:    Literal["error"] = "error"
     message: str
+
+
+# ── Feedback request ──────────────────────────────────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    user_id:    str       = "default"
+    perfume_id: str
+    reaction:   str                    # "liked" | "disliked" | "skipped"
+    accords:    List[str] = []
+
+    @field_validator("reaction")
+    @classmethod
+    def valid_reaction(cls, v):
+        if v not in {"liked", "disliked", "skipped"}:
+            raise ValueError(f"reaction must be liked, disliked, or skipped — got {v!r}")
+        return v

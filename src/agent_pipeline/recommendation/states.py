@@ -23,21 +23,17 @@ class RecommendationWorkingState(TypedDict):
     mood_input: str
     user_id:    str
 
-    # --- [1] Router ---
-    request_type:  str   # "personal" | "gift" | "seasonal" | "occasion" | "exploratory"
-    routing_hints: str
-
-    # --- [2] Taste + Profile Agent ---
+    # --- [1] Taste + Profile Agent ---
     extracted_moods:   List[str]
     extracted_accords: List[str]
     intent_summary:    str
 
-    # --- [3] Search Agent ---
+    # --- [2] Search Agent ---
     query_text: str        # kept for Memory Update
-    reranked:   List[dict] # top-10 scored candidates
+    reranked:   List[dict] # top-5 scored candidates
 
-    # --- [4] Result Composer ---
-    final_results: List[dict]  # top-5 diverse + enriched
+    # --- [3] Explanation Generator ---
+    recommendations: List[RecommendedPerfume]
 
 
 # ---------------------------------------------------------------------------

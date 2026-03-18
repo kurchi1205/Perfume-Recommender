@@ -9,31 +9,18 @@ load_dotenv(Path(__file__).resolve().parents[4] / ".env")
 from states import (
     RecommendationInputState,
     RecommendationWorkingState,
-    RecommendationOutputState
+    RecommendationOutputState,
 )
-from nodes.accord_extractor import accord_extracting_agent
-from nodes.mood_extractor import mood_extracting_agent
-from nodes.search import search_node
-from nodes.evaluator import evaluate_node
+from nodes.taste_profile_agent import taste_profile_node
+from nodes.search_agent import search_node
+from nodes.explanation_generator import explanation_generator_node
+from nodes.memory_update import memory_update_node
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
 logger = logging.getLogger(__name__)
-
-
-def extract_mood(merged: dict):
-    input_state = {k: merged[k] for k in RecommendationInputState.__annotations__ if k in merged}
-    state = {k: merged[k] for k in RecommendationWorkingState.__annotations__ if k in merged}
-    result = mood_extracting_agent(input_state, state)
-    return {"extracted_moods": result["extracted_moods"]}
-
-def extract_accord(merged: dict):
-    input_state = {k: merged[k] for k in RecommendationInputState.__annotations__ if k in merged}
-    state = {k: merged[k] for k in RecommendationWorkingState.__annotations__ if k in merged}
-    result = accord_extracting_agent(input_state, state)
-    return {"extracted_accords": result["extracted_accords"]}
 
 
 def build_graph():
@@ -43,16 +30,15 @@ def build_graph():
         output=RecommendationOutputState,
     )
 
-    graph.add_node("extract_mood", extract_mood)
-    graph.add_node("extract_accord", extract_accord)
-    graph.add_node("search", search_node)
-    graph.add_node("evaluator", evaluate_node)
+    graph.add_node("taste_profile_agent",   taste_profile_node)
+    graph.add_node("search_agent",          search_node)
+    graph.add_node("explanation_generator", explanation_generator_node)
+    graph.add_node("memory_update",         memory_update_node)
 
-    graph.add_edge(START, "extract_mood")
-    graph.add_edge(START, "extract_accord")
-    graph.add_edge("extract_mood", "search")
-    graph.add_edge("extract_accord", "search")
-    graph.add_edge("search", "evaluator")
-    graph.add_edge("evaluator", END)
+    graph.add_edge(START,                   "taste_profile_agent")
+    graph.add_edge("taste_profile_agent",   "search_agent")
+    graph.add_edge("search_agent",          "explanation_generator")
+    graph.add_edge("explanation_generator", "memory_update")
+    graph.add_edge("memory_update",         END)
 
     return graph.compile()

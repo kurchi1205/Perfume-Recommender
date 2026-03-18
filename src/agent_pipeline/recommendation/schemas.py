@@ -17,19 +17,6 @@ class InputType(str, Enum):
     image = "image"
 
 
-# ── Router output ─────────────────────────────────────────────────────────────
-
-class RouterOutput(BaseModel):
-    request_type: str = "personal"  # "personal" | "gift" | "seasonal" | "occasion" | "exploratory"
-    routing_hints: str = ""
-
-    @field_validator("request_type")
-    @classmethod
-    def valid_request_type(cls, v):
-        allowed = {"personal", "gift", "seasonal", "occasion", "exploratory"}
-        return v if v in allowed else "personal"
-
-
 # ── LLM output validators ─────────────────────────────────────────────────────
 
 class ExtractedList(BaseModel):
