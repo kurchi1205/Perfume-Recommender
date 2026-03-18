@@ -17,6 +17,19 @@ class InputType(str, Enum):
     image = "image"
 
 
+# ── Router output ─────────────────────────────────────────────────────────────
+
+class RouterOutput(BaseModel):
+    request_type: str = "personal"  # "personal" | "gift" | "seasonal" | "occasion" | "exploratory"
+    routing_hints: str = ""
+
+    @field_validator("request_type")
+    @classmethod
+    def valid_request_type(cls, v):
+        allowed = {"personal", "gift", "seasonal", "occasion", "exploratory"}
+        return v if v in allowed else "personal"
+
+
 # ── LLM output validators ─────────────────────────────────────────────────────
 
 class ExtractedList(BaseModel):
@@ -66,6 +79,7 @@ class CandidatePerfume(BaseModel):
     url: str
     gender: str
     main_accords: List[str]
+    moods:        List[str] = []
     search_score: float
     rerank_score: float = 0.0
 
@@ -126,6 +140,7 @@ class RecommendedPerfume(BaseModel):
     gender:      str
     llm_score:   Optional[float] = None
     final_score: Optional[float] = None
+    explanation: Optional[str]   = None
 
     @field_validator("main_accords", mode="before")
     @classmethod

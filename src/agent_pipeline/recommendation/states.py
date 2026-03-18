@@ -1,4 +1,6 @@
-from typing import TypedDict, List
+from typing import List, TypedDict
+
+from schemas import RecommendedPerfume
 
 
 # ---------------------------------------------------------------------------
@@ -6,40 +8,36 @@ from typing import TypedDict, List
 # ---------------------------------------------------------------------------
 
 class RecommendationInputState(TypedDict):
-    input_type: str          # "text" | "image"
-    mood_input: str          # free-text mood description OR path to image file
+    input_type: str   # "text" | "image"
+    mood_input: str   # free-text mood description OR image URL
+    user_id:    str   # defaults to "default" for anonymous users
 
 
 # ---------------------------------------------------------------------------
 # Working state — passed between all nodes
 # ---------------------------------------------------------------------------
 
-class RecommendedPerfume(TypedDict):
-    perfume_id: str          # Milvus id
-    name: str
-    brand: str
-    description: str
-    url: str
-    image_url: str           # Fragrantica social card image
-    main_accords: List[str]
-    gender: str
-
-
 class RecommendationWorkingState(TypedDict):
     # --- from input ---
     input_type: str
     mood_input: str
+    user_id:    str
 
-    # --- after mood extraction ---
+    # --- [1] Router ---
+    request_type:  str   # "personal" | "gift" | "seasonal" | "occasion" | "exploratory"
+    routing_hints: str
+
+    # --- [2] Taste + Profile Agent ---
+    extracted_moods:   List[str]
     extracted_accords: List[str]
-    extracted_moods: List[str]
+    intent_summary:    str
 
-    # --- after Milvus search ---
-    candidates: List[dict]         # top-20 raw results from Milvus
+    # --- [3] Search Agent ---
+    query_text: str        # kept for Memory Update
+    reranked:   List[dict] # top-10 scored candidates
 
-    # --- retry control ---
-    retry_count: int
-    user_intent_summary: str
+    # --- [4] Result Composer ---
+    final_results: List[dict]  # top-5 diverse + enriched
 
 
 # ---------------------------------------------------------------------------
